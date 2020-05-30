@@ -1,0 +1,149 @@
+<html>
+<html lang="en-US">
+<head>
+
+<title>The Percetion Gap: An Analysis of Speed Dating</title>
+</head>
+
+<body>
+<h1>The Perception Gap: An Analysis of Speed Dating Data</h1>
+<h2>By: Prithvi "Vee" Kalkunte</h2>
+
+<p>This is an analysis of speed dating data from Professors Ray Fisman and Sheena Iyengar from Columbia University. In particular, this analysis tests a somewhat intuitive theory: people are actually pretty bad at knowing what their types are, and there's often a significant gap between how much someone should like an individual, versus how much they actually end up liking another person. This project hopes to explore our dataset in a new way through a few descriptive depictions, a probit model observing predictors of matches between individuals, and finally, information which may suppor the theory of this prediction gap in the perception and actuality of whether two people got together.</p>
+
+<p>Libraries in use today:</p>
+<!--begin.rcode
+library(tidyverse)
+library(ggplot2)
+library(summarytools)
+end.rcode-->
+
+
+<h3> Table of Content:</h3>
+  <ol>
+    <li><a name = "intro">Introduction and Context</a></li>
+    <li><a name = "descriptive">Characteristics of the Average Dater</a></li>
+    <li><a name = "probits">Predicting Decisions and Likes</a></li>
+    <li><a name = "theory">The Prediction Gap</a></li>
+    <li><a name = "conclude">Conclusion & Further Notes</a></li>
+  </ol>
+<br>
+
+<h3><a href = "#intro">Introduction and Context</a></h3>
+
+<p>This dataset utilizes information from a series of speed dating waves from 2002 to 2004 within the Columbia University area - again, courtesy of Professors Ray Fisman and Sheeny Iyengar. Each observation stands for a round in one of the speed dating events. Most participants are in their mid 20s, early career or late college students who live within New York City. Some general notes about the dataset and the variables that will be mentioned commonly in this report:</p>
+
+<p>
+  <ul>
+    <li>Our finalized dataset has 6618 rows, 64 variables (though we don't use all of them)</li>
+    <li>This is lower than the original dataset, as we have chosen to omit waves 6 through 9 due to what variables we've chosen to focus on.</li>
+    <li>We've also created the optimism variable, which measures how well an individual expects a night to go - a sum of how many dates they think they will get, and a 1-10 rating of their mood prior to the event.</li>
+    <li>We've also created the Impact of Same Race (impSameRace), which is the the observation's self-reported preference towards the same race (as a decimal) multiplied by the binary of whether or not they're the same race.</li>
+      <li>Like is the variable in which one partner rates the other out of 10. This is reflective of how they felt after the event. The individual rates the partner on their attributes (sincerity, etc.), as well as provides how much importance they give to each attribute. Using this data, we've created the variable sumWeights, whhich stands for how much the individual should've liked their partner, based on their self-reported values and perspectives of their partner.</li>
+      <li>The difference between this expected like value and the actual value is stored in the variable diffWeightLike, which is the absolute value difference between the expected and actual value of how much a individual likes the other.</li>
+  </ul>
+</p>
+
+<p>With all of these edits, we can focus on understanding our speed daters, predicting their matching behavior, and finally, investigating the gap between their expectations and what they ended up actually doing - the Perception Gap.</p>
+<br>
+
+<h3><a href = "#descriptive">Characteristics of the Average Dater</a></h3>
+
+<p>We've got a few different perspectives to look through - people's perspectives of what they want, their perception of themselves, and the gaps between their wants and their actions.</p>
+
+<h4>Attribute Distributions</h4>
+
+<p>This dataset characterizes people with 6 attributes that an individual may choose to value - attractiveness, sincerity, intelligence, fun, ambition, and shared interests.</p>
+
+<!--begin.rcode
+summarytools::descr(appealSet)
+end.rcode-->
+
+<p>Observing this distribution, we notice a couple trends - attractiveness is the highest valued trait on average, and there doesn't exist anyone in this dating pool who didn't put any points in attractiveness. However, attractiveness also has the largest range of preferences, in IQR, standard deviation, as well as overall range.</p>
+
+<p>Furthermore, we see that ambition has both the lowest median/mean combination, as well as the lowest max - at most, someone puts 20% of their value into their partner's ambition. This latter quirk could be reflective of the phrasing of ambition (as, occasionally, it's connotated negatively), but regardless, this is how people's preferences over the attribute pan out.</p>
+
+<p>We can reasonably assume that we have a reletively large range of value sets within people, when we consider the Kurtosis (or spread) of our attributes. Considering all of them are platykurtotic, or approaching a uniform distribution rather than a sharp hump, it appears that, although most of our dataset values attractiveness significantly, people's values and preferences are spread across the distribution, with a good variety of preferences among the pool.</p>
+
+<h4>Self-Perception and Optimism</h4>
+
+<p>Another attribute we can observe within our dating pool is an individual's level of optimism going into it. Optimism is a mutated variable from the original dataset, the decimal of their feelings about the event beforehand, multiplied by the number of dates they expect to get. Essentially, people of high optimism either think the night is going to be very worthwile and/or that they'll get a lot of dates that night.</p>
+
+<!--begin.rcode
+summarytools::descr(data[, c("optimism", "expnum", "exphappy")])
+end.rcode-->
+
+<p>Looking at our code, we see that people have a pretty wide range of feelings towards the event, with the bulk of optimism settling between 1 and 4 - but this is likely due to the number of dates people expect to get (median of 4 / 20) rather than their happiness at attending this event (median of 6 / 10), which skews towards the lower side. A particularly optimistic person would likely expect to get more than 8 dates, and would be pretty excited for this event, above 7.</p>
+
+<h4>Weight Gaps and Perception Gaps</h4>
+
+<p>This section observes the diffences between how people rated each other - weights representing how they should've rated each other, weight gap being the gap between those predicted values, and the like gap being the difference between how they actually liked each other. The first chart represents the differences between perception in those who did not match, and the second chart shows the distributions for those who did.</p>
+
+<!--begin.rcode
+temp <- data %>% filter(match == 1) %>% select(weightGap, likeGap, diffWeightLike)
+temp2 <- data %>% filter(match == 0) %>% select(weightGap, likeGap, diffWeightLike)
+#among the overall
+summarytools::descr(temp2)
+#among those who got a match
+summarytools::descr(temp)
+end.rcode-->
+
+<p>So as our intuitions would suggest, partners who got matched have lower gaps in both their predicted liking of each other, as well as their actual liking of each other. However, a note to make: the differences in the two groups via weightGap are overall smaller than the differences between the two groups in likeGap - the first inkling we have of this perception divide, along with the average differnece between the predicted and actual attraction by just under a point.</p>
+<br>
+
+<h3><a href = "#probits">Predicting Decisions and Likes</a></h3>
+
+<p>With a better understanding of our dating pool, we now can look at a probit model for prediciting two different things - first, what makes an individual decide yes on another, and what makes a pair both say yes to each other.</p>
+
+<h4>What Makes a "Yes"?</h4>
+
+<p>We use the following variables to predict the binary variable, decision: sumWeights (predicted amount of like), int_corr (correlation of interests), impSameRace (same race, weighted for importance), and optimism. We also display a probit model that also includes like as an independent variable.</p>
+
+<!--begin.rcode, echoes = FALSE, results = 'hide'
+decData <- data %>% select("dec", "sumWeights", "int_corr", "like", "impSameRace", "optimism")
+decProbitWLike <- decData %>% filter(!is.na(dec) & !is.na(sumWeights) &!is.na(like) &
+                                        !is.na(int_corr) & !is.na(impSameRace) & !is.na(optimism)) %>%
+  glm(data = ., dec ~ sumWeights + like + int_corr + impSameRace + optimism,
+      family = binomial(link = "probit"))
+
+decProbitWOLike <- decData %>% filter(!is.na(dec) & !is.na(sumWeights) &
+                                  !is.na(int_corr) & !is.na(impSameRace) & !is.na(optimism)) %>%
+  glm(data = ., dec ~ sumWeights + int_corr + impSameRace + optimism,
+      family = binomial(link = "probit"))
+
+summary(decProbitWOLike)
+summary(decProbitWLike)
+end.rcode-->
+
+<p>Looking at this predictive model, we can see that, very intuitively, predicted attractness is important. Within the probit model with both like and weight, we see that the impact of a change in like, the parameter of like, is larger than weight - which is, again, intuitively aligned with the notion that our final judgement on the person is more impactful than our theoredical appreciation for people.</p>
+
+<p>Beyond that, in the model without like, we see that optimism ends up being a significant predictor of decisionmaking - suggesting that people with warmer dispositions towards the event, or perhaps higher expectations towards the event, are more likely to say yes to, what I would speculate to be, match their own expectations of the night. After all, you don't get matches unless you say yes to another person.</p>
+
+<h4>What Makes a Match?</h4>
+
+<p>We use the following variables to predict the binary variable, Match: weightGaps (gap between predicted attraction), likeGap (gap between actual attraction), int_corr (correlation of interests), sameRace (whether they're the same race), and ageDiff (age differnece).</p>
+
+<!--begin.rcode
+summary(matchProbit)
+end.rcode-->
+
+<p>All the variables included are at least significant on a basic level, with the likeGap and the age differnece serving as the most significant indicators. A somewhat untintuitive result is that, while weightGap is signficant, it isn't very significant, staying on the same level of interest correlation.</p>
+<br>
+
+<h3><a href = "#theory">The Prediction Gap</a></h3>
+
+<p>Throughout this analysis, we find multiple little indicators of the disjunction between people's theoredical attraction to another peron and their actual attraction to such a person - the difference in parameters (impact) between the predicted and actual like in predicting the decision making, the general gap between the predicted and actual attraction, and finally, the difference of importance of predicted attraction and actual attraction when predicting whether two people match.</p>
+
+<p>One interpretation of this is that people don't always have a good grasp on their own preferences, of course, but another is that these attributes may be incomplete, that there are other things people value. Either way, this is a noticable gap that deserves some degree of explaination, one way or another.</p>
+<br>
+
+<h3><a href = "#conclude">Conclusion & Further Notes</a></h3>
+
+<p>Through this report, we've figured out a couple things about our dating pool: that this pool, a somewhat diverse representation of mostly 20-something year olds in NYC, values attractiveness the most and amition the least, on average. Furthermore, we see that the optimistic among them tend to pair with the most people, and usually when people have similar interests, are of similar age, and often, are of the same race - they're more likely to match. However, none of these attributes are all encompassing. We've also noted a potential gap between how much people should like each other and how much they actually ended up liking each other - suggesting either a gap in the perceptions of the individuals, or a gap in what was measured within the data.</p>
+<br>
+
+<p>Dataset is credited to Ray Fisman and Sheena Iyengar. Code and Analysis is by me. Full code can be found on github.com/pkalkunte18/speed-dating</p>
+
+<p>Liked what you read? Contact me via @v_kalkunte, check out my code/other projects on <a href = "https://github.com/pkalkunte18">github</a>, or check out my <a href = "https://www.linkedin.com/in/prithvi-vee-k-b88886a2/">linkedin profile</a>.</p>
+</body>
+</html>
